@@ -22,9 +22,9 @@ if __name__ == '__main__':
     optparser.add_option("--noreorder", action="store_true", dest="noreorder",
                          default=False, help="No reordering of binding dataflow, Default=False")
     optparser.add_option("-s", "--save", dest="savefile",
-                         default=None, help="Output file of computed adjacency matrix. Enter None not to save, Default=None")
+                         default=None, help="Output directory of computed adjacency matrix. It saves in the directory named same as the topmodule when it is blank, Default=None")
     (options, args) = optparser.parse_args()
-        
+    
     filelist = args
     
     for f in filelist:
@@ -38,10 +38,17 @@ if __name__ == '__main__':
                   options.include,
                   options.define)
     
-    if options.savefile is not None:
-        # Save matrix
-        np.savetxt(f'./output/{options.savefile}_matrix.csv', result['matrix'], delimiter='\t', fmt='%.2f')
-        
-        # Save cell info
-        df = pd.DataFrame.from_dict({'cell': result['cells'], 'class': [result['cell_class'][x] for x in result['cells']]})
-        df.to_csv(f'./output/{options.savefile}_column.csv', sep = '\t')
+    save = options.savefile
+    if save is not None:
+        save = options.topmodule
+    
+    path = f'./parsing/{save}'
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    # Save matrix
+    np.savetxt(f'{path}/matrix.csv', result['matrix'], delimiter=',', fmt='%.2f')
+    
+    # Save cell info
+    df = pd.DataFrame.from_dict(result['cell_class'], orient='index', columns=['class'])
+    df.to_csv(f'{path}/column.csv', sep=',')

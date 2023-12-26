@@ -246,3 +246,53 @@ input a,b;
 output z;
 assign z = a^b;
 endmodule
+
+module nd3av0x05 (a,b,c,z);
+input a,b,c;
+output z;
+endmodule
+
+module cgi2v0x05 (a,b,c,z);
+input a,b,c;
+output z;
+endmodule
+
+module oai23av0x05 (a3,b1,b2,z);
+input a3,b1,b2;
+output z;
+endmodule
+
+module oai21bv0x05 (a1,a2,b,z);
+input a1,a2,b;
+output z;
+endmodule
+
+module aoi22v0x05 (a1,a2,b1,b2,z);
+input a1,a2,b1,b2;
+output z;
+endmodule
+
+module oai21a2v0x05 (a1,a2,b,z);
+input a1,a2,b;
+output z;
+endmodule
+
+module xor3v1x05 (a,b,c,z);
+input a,b,c;
+output z;
+endmodule
+
+module cgi2bv0x05 (a,b,c,z);
+input a,b,c;
+output z;
+endmodule
+
+module xnr3v1x05 (a,b,c,z);
+input a,b,c;
+output z;
+endmodule
+
+module oai21a2bv0x05 (a1,a2,b,z);
+input a1,a2,b;
+output z;
+endmodule

@@ -152,8 +152,7 @@ cython_debug/
 #.idea/
 
 # Test and Output
-#test/
-#output/
+parsing/
 
 # PyVerilog
 parser.out

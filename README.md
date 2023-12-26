@@ -2,8 +2,7 @@
 
 - Convert the synthesized circuit into adjacency matrix for training GNN.
 
-> ### Requirements
-- [Pyverilog](https://github.com/PyHDI/Pyverilog)
+---
 
 > ### Usage
 - Parse verilog into a adjacency matrix
@@ -11,14 +10,23 @@
     parse_verilog.py -t {TOP_MODULE} -s {OUTPUT_PATH} {INPUT_PATH}
     ```
     
-    - the output file is consisted of (1) adjacency matrix and (2) cell_class dataframe. The path of the output files are `./output/{OUTPUT_PATH}_matrix.csv` and `./output/{OUTPUT_PATH}_column.csv` for each.
+    - the output file is consisted of (1) adjacency matrix and (2) cell_class dataframe. The path of the output files are `.\parsing\{OUTPUT_PATH}\matrix.csv` and `.\output\{OUTPUT_PATH}\column.csv` for each.
     - Example ([yosys/examples/cmos](https://github.com/YosysHQ/yosys/tree/master/examples/cmos))
         ```bash
-        parse_verilog.py -t counter -s counter .\test\counter_synth.v .\test\cmos_cells.v
+        parse_verilog.py -t counter -s counter .\example\cmos\counter_synth.v .\example\cmos\cmos_cells.v
         ```
         
-        - Check the `test` and `output` folder for expected input and output. But note that the list of cells are not ordered so that the result of matrix can be different in every execution.
- 
+        - Check the `example` and `parsing` folder for the correct I/O of parser.
+
+---
+
+> ### Requirements
+- [Yosys](https://github.com/YosysHQ/yosys)
+- [Pyverilog](https://github.com/PyHDI/Pyverilog)
+    - You shuold install the Icarus Verilog matching to the Pyverilog.
+
+---
+
 > ### Referenced
 - https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html
 - https://chioni.github.io/posts/gnn/

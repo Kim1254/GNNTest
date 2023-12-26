@@ -4,8 +4,8 @@ import pyverilog
 from pyverilog.dataflow.dataflow_analyzer import VerilogDataflowAnalyzer
     
 def dprint(text):
-    #pass # Debug False
-    print(text) # Debug True
+    pass # Debug False
+    #print(text) # Debug True
 
 def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
     result = {}
@@ -49,6 +49,7 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
         _inst_class[module.scopechain[1].scopename] = name
     
     _inst_list = list(set(inst_list))
+    _inst_list.sort()
     
     n = len(_inst_list)
     
@@ -76,6 +77,7 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
         sig_list.append(sig.scopechain[1].scopename)
             
     _sig_list = list(set(sig_list))
+    _sig_list.sort()
     result['singals'] = _sig_list
     
     binds = analyzer.getBinddict()
