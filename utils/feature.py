@@ -1,16 +1,20 @@
 import numpy as np
 import pandas as pd
-
-def dprint(text):
-    #pass
-    print(text)
-
-def GetFeature(path, includes):
-    df = pd.read_csv(path, sep='\t')
-    dprint(df)
     
-    return None
+def GetFeatureMatrix(cell_dict, liberty):
+    feature_matrix = {}
     
-def AdjacencyMatToFeatureMat():
+    subset = set(cell_dict.values()) - set(liberty.keys())
     
-    return None
+    if len(subset) != 0:
+        raise IOError(f'The feature map cannot cover all classes in cells: {subset}')
+    
+    keys = list(liberty.keys())
+    mat = np.zeros((len(cell_dict), len(liberty)))
+    for idx, (cell, feature) in enumerate(cell_dict.items()):
+        fidx = keys.index(feature)
+        mat[idx][fidx] = 1
+    
+    feature_matrix['matrix'] = mat
+    
+    return feature_matrix
