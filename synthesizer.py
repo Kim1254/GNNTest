@@ -22,12 +22,17 @@ if __name__ == '__main__':
     flist = []
     _flist = os.listdir(target)
     for f in _flist:
-        if 'test' in os.path.basename(f):
+        if 'test' in os.path.basename(f).lower():
+            continue
+        if 'tb' in os.path.basename(f).lower():
             continue
         if os.path.splitext(f)[1] != '.v':
             continue
         
         flist.append(os.path.join(os.path.join(os.getcwd(), target), f))
+    
+    if not os.path.exists(options.output):
+        os.makedirs(options.output)
     
     cmds = f'''read_verilog {" ".join(flist)}
 synth
@@ -39,6 +44,6 @@ exit
 '''
     
     p = run('yosys', stdout=PIPE, input=cmds, encoding='ascii')
-    print(p.returncode)
-    print(p.stdout)
+    if p.returncode != 0:
+        raise IOError(f"Failed syntheize {target} circuit: {p.returncode}")
     
