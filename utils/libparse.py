@@ -42,7 +42,7 @@ def ParseLiberty(path):
 def WriteLibVerilog(path, library):
     f = open(path, 'w')
     
-    f.write(f'// Source liberty: {path}\n')
+    f.write(f'// Source: {path}\n')
     
     for cell, pins in library.items():
         inputs = pins.get('input')

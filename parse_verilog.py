@@ -11,8 +11,6 @@ from utils.feature import GetFeatureMatrix
 
 if __name__ == '__main__':
     optparser = OptionParser()
-    optparser.add_option("-v", "--version", action="store_true", dest="showversion",
-                         default=False, help="Show the version")
     optparser.add_option("-I", "--include", dest="include", action="append",
                          default=[], help="Include path")
     optparser.add_option("-D", dest="define", action="append",
@@ -43,7 +41,7 @@ if __name__ == '__main__':
     if save is None:
         save = options.topmodule
     
-    save_path = f'./parsing/{save}'
+    save_path = f'.\\parsing\\{save}'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     
@@ -70,11 +68,11 @@ if __name__ == '__main__':
         raise IOError('Empty adjacency matrix, cannot map and save')
     
     # Save matrix
-    np.savetxt(f'{save_path}/matrix.csv', result['matrix'], delimiter=',', fmt='%.2f')
+    np.savetxt(f'{save_path}\\matrix.csv', result['matrix'], delimiter=',', fmt='%.2f')
     
     # Save cell info
     df = pd.DataFrame.from_dict(result['cell_class'], orient='index', columns=['class'])
-    df.to_csv(f'{save_path}/cells.csv', sep=',')
+    df.to_csv(f'{save_path}\\cells.csv', sep=',')
     
     feature_matrix = GetFeatureMatrix(result['cell_class'], liberty)
-    np.savetxt(f'{save_path}/feature.csv', feature_matrix['matrix'], delimiter=',', fmt='%.2f')
+    np.savetxt(f'{save_path}\\feature.csv', feature_matrix['matrix'], delimiter=',', fmt='%.2f')

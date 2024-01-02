@@ -13,20 +13,21 @@
     - the output file is consisted of (1) adjacency matrix and (2) cell_class dataframe. The path of the output files are `.\parsing\{OUTPUT_PATH}\matrix.csv` and `.\output\{OUTPUT_PATH}\column.csv` for each.
     - Example ([yosys/examples/cmos](https://github.com/YosysHQ/yosys/tree/master/examples/cmos))
         ```bash
-        parse_verilog.py -t counter -s counter .\example\cmos\counter_synth.v .\example\cmos\cmos_cells.v
+        parse_verilog.py -t counter -l .\example\cmos\cmos_cells.lib .\example\cmos\counter_synth.v
         ```
         
         - Check the `example` and `parsing` folder for the correct I/O of parser.
+		- Note that you included liberty when you used in synthesis
 
 ---
 
 > ### Requirements
-- [Yosys](https://github.com/YosysHQ/yosys)
+- [Yosys](https://github.com/YosysHQ/yosys/)
+    - Synthesize verilog files with Yosys tool.
 - [Pyverilog](https://github.com/PyHDI/Pyverilog)
-    - You shuold install the Icarus Verilog matching to the Pyverilog.
-
----
-
-> ### Referenced
-- https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html
-- https://chioni.github.io/posts/gnn/
+    - You shuold install the [Icarus Verilog](https://bleyer.org/icarus/) matching to the Pyverilog.
+- [liberty-parser](https://pypi.org/project/liberty-parser/)
+- torch==2.1.0
+- torchvision==0.16.0
+- torchaudio==2.1.0
+- torch_geometric==2.4.0

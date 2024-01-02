@@ -153,6 +153,7 @@ cython_debug/
 
 # Test and Output
 parsing/
+example/
 
 # PyVerilog
 parser.out
