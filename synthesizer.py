@@ -17,10 +17,19 @@ if __name__ == '__main__':
         print('Usage: synthesizer.py {OPTIONS} {TARGET_DIR_NAME}')
         sys.exit(0)
     
+    current = os.getcwd()
+    
+    if '.' in options.liberty:
+        options.liberty = os.path.join(current, options.liberty)
+    
+    if '.' in options.output:
+        options.output = os.path.join(current, options.output)
+    
     target = args[0]
+    os.chdir(target)
     
     flist = []
-    _flist = os.listdir(target)
+    _flist = os.listdir()
     for f in _flist:
         if 'test' in os.path.basename(f).lower():
             continue
@@ -29,7 +38,7 @@ if __name__ == '__main__':
         if os.path.splitext(f)[1] != '.v':
             continue
         
-        flist.append(os.path.join(os.path.join(os.getcwd(), target), f))
+        flist.append(f)
     
     if not os.path.exists(options.output):
         os.makedirs(options.output)
