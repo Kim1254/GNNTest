@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 from subprocess import run, PIPE
 from optparse import OptionParser
 
@@ -18,22 +19,20 @@ if __name__ == '__main__':
         sys.exit(0)
     
     current = os.getcwd()
-    
-    if '.' in options.liberty:
-        options.liberty = os.path.join(current, options.liberty)
-    
-    if '.' in options.output:
-        options.output = os.path.join(current, options.output)
+    options.liberty = os.path.join(current, options.liberty)
+    options.output = os.path.join(current, options.output)
     
     target = args[0]
     os.chdir(target)
     
+    ban_keywords = ['test.v', 'tb.v', 'test_', '_test', 'tb_', '_tb', 'testbench']
     flist = []
+    
     _flist = os.listdir()
     for f in _flist:
-        if 'test' in os.path.basename(f).lower():
+        if not os.path.isfile(f):
             continue
-        if 'tb' in os.path.basename(f).lower():
+        if any(ban in os.path.basename(f).lower() for ban in ban_keywords):
             continue
         if os.path.splitext(f)[1] != '.v':
             continue

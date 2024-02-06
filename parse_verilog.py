@@ -46,7 +46,7 @@ if __name__ == '__main__':
         os.makedirs(save_path)
     
     liberty = {}
-    if options.liberty is not None:
+    if len(options.liberty) > 0:
         liberty = ParseLiberty(options.liberty)
         
         if len(liberty) == 0:
@@ -62,7 +62,8 @@ if __name__ == '__main__':
                   options.noreorder,
                   options.nobind,
                   options.include,
-                  options.define)
+                  options.define,
+                  liberty.keys())
   
     if result is None or len(result) == 0:
         raise IOError('Empty adjacency matrix, cannot map and save')

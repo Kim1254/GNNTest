@@ -1,13 +1,15 @@
 import numpy as np
 
+import json
+
 import pyverilog
 from pyverilog.dataflow.dataflow_analyzer import VerilogDataflowAnalyzer
     
 def dprint(text):
-    pass # Debug False
-    #print(text) # Debug True
+    #pass # Debug False
+    print(text) # Debug True
 
-def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
+def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define, lib_modules):
     result = {}
     
     analyzer = VerilogDataflowAnalyzer(filelist, topmodule,
@@ -16,20 +18,25 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
                                        preprocess_include=include,
                                        preprocess_define=define)
     analyzer.generate()
-    result['analyzer'] = analyzer
     
     # Cells exclude the topmodule
     instances = analyzer.getInstances()
     
     inst_list = []
     _inst_class = {}
+    _used_inst = {}
     
     for instance in instances:
         # ScopeChain, str
         module, name = instance
         
-        # Skip the topmodule
-        if name == topmodule:
+        # Skip the user-defined cell info
+        if name not in lib_modules:
+            dprint(f'This is a parent cell: {instance}')
+            
+            if name not in _used_inst.keys():
+                _used_inst[name] = module
+            
             continue
         
         # Verify cell is correct
@@ -37,21 +44,19 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
             dprint(f'Invalid cell found: {instance}')
             continue
         
-        # Verify scopechain is topmodule
-        if module.scopechain[0].scopename != topmodule:
-            dprint(f'Unmatching TopModule: {instance} with {topmodule}')
-            continue
-        
         # Append column with ScopeChain.scopename (=The name of cell)
-        inst_list.append(module.scopechain[1].scopename)
+        inst_list.append(module)
         
         # Append class of column
-        _inst_class[module.scopechain[1].scopename] = name
+        _inst_class[module] = name
+        print(module, name)
     
     _inst_list = list(set(inst_list))
     _inst_list.sort()
     
     n = len(_inst_list)
+    
+    return None
     
     if n == 0:
         raise ValueError("No Instance Exist. Cannot create the adjacency matrix.")
@@ -65,16 +70,13 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
     
     for sig, item in sigs.items():
         # Collect signal in TopModule (except the input and output signals)
-        if len(sig.scopechain) != 2:
-            continue
-        
-        # Verify scopechain is topmodule
-        if sig.scopechain[0].scopename != topmodule:
-            dprint(f'Unmatching TopModule: {sig} with {topmodule}')
+        if len(sig.scopechain) < 2:
+            dprint(f'Invalid sig: {sig}')
             continue
         
         # Append column with ScopeChain.scopename (=The name of signal)
-        sig_list.append(sig.scopechain[1].scopename)
+        dprint(f'Added sig: {sig} -> {item}')
+        sig_list.append(sig)
             
     _sig_list = list(set(sig_list))
     _sig_list.sort()
@@ -91,11 +93,7 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define):
             dprint(f'Invalid bind item found: {bind} -> {item}')
             continue
         
-        # Verify scopechain is topmodule
-        if bind.scopechain[0].scopename != topmodule:
-            dprint(f'Unmatching TopModule: {bind} with {topmodule}')
-            continue
-        
+        dprint(f'check bind: {bind} -> {item}')
         # Collect bind of input signals
         if len(bind.scopechain) == 3:
             
