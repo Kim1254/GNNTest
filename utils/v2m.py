@@ -4,6 +4,8 @@ import json
 
 import pyverilog
 from pyverilog.dataflow.dataflow_analyzer import VerilogDataflowAnalyzer
+from pyverilog.vparser.ast import Input, Output, Wire
+from pyverilog.dataflow.dataflow import DFTerminal, DFPartselect
     
 def dprint(text):
     #pass # Debug False
@@ -19,116 +21,68 @@ def MatrixFromVerilog(filelist, topmodule, noreorder, nobind, include, define, l
                                        preprocess_define=define)
     analyzer.generate()
     
-    # Cells exclude the topmodule
+    # Cell
     instances = analyzer.getInstances()
+    sigs = analyzer.getSignals()
+    binds = analyzer.getBinddict()
     
-    inst_list = []
-    _inst_class = {}
-    _used_inst = {}
+    # Check connections using binds
+    bind_list = []
+    connection = []
     
-    for instance in instances:
-        # ScopeChain, str
-        module, name = instance
-        
-        # Skip the user-defined cell info
-        if name not in lib_modules:
-            dprint(f'This is a parent cell: {instance}')
-            
-            if name not in _used_inst.keys():
-                _used_inst[name] = module
-            
+    for bind, item in binds.items():
+        # Verify the signal is correct
+        if len(item) != 1: # 0 or clock (more than 1)
+            dprint(f'Invalid bind passed: {bind} -> {item}')
             continue
         
-        # Verify cell is correct
-        if len(module.scopechain) < 2:
-            dprint(f'Invalid cell found: {instance}')
+        '''
+        check bind: top.vs._093_.c, <class 'pyverilog.utils.scope.ScopeChain'>
+        (Bind dest:top.vs._093_.c tree:(Terminal top.vs._018_)) assign top_vs__093__c = top_vs__018_;
+        '''
+        
+        dprint(f'check bind: {bind}')
+        if bind not in sigs.keys():
+            dprint(f'Invalid bind passed: {bind} does not exist in signal list!')
             continue
         
-        # Append column with ScopeChain.scopename (=The name of cell)
-        inst_list.append(module)
+        signal = sigs[bind]
         
-        # Append class of column
-        _inst_class[module] = name
-        print(module, name)
+        sig_type = None
+        for s in signal:
+            if sig_type is None or type(s) is not Wire:
+                sig_type = type(s)
+            if type(s) is not Wire and sig_type is not type(s): # Multiple input/output definition for one signal
+                sig_type = None
+                break
+        
+        if sig_type is None:
+            dprint(f'The type of signal in {bind} cannot be classified. Check the verilog.')
+            continue
+        
+        dprint(f'sigtype: {sig_type}')
+        item_type = type(item[0].tree)
+        if item_type is DFTerminal: # Signal <= Signal
+            bind_list.append([bind, item[0].tree.name, sig_type])
+        elif item_type is DFPartselect: # Signal <= array[msb:lsb]
+            bind_list.append([bind, item[0].tree.var, sig_type])
+        else: # Integers
+            dprint(f'Ignored unsupported bind type: {type(item[0].tree)}, code: {item[0].tocode()}')
+        
+        for bi in bind_list:
+            connection.append([])
+            break
+        
     
-    _inst_list = list(set(inst_list))
-    _inst_list.sort()
-    
-    n = len(_inst_list)
-    
-    return None
+    n = len(instances)
     
     if n == 0:
         raise ValueError("No Instance Exist. Cannot create the adjacency matrix.")
     
-    result['cells'] = _inst_list
-    result['cell_class'] = _inst_class
+    result['connection'] = connection
     
-    sigs = analyzer.getSignals()
-    
-    sig_list = []
-    
-    for sig, item in sigs.items():
-        # Collect signal in TopModule (except the input and output signals)
-        if len(sig.scopechain) < 2:
-            dprint(f'Invalid sig: {sig}')
-            continue
-        
-        # Append column with ScopeChain.scopename (=The name of signal)
-        dprint(f'Added sig: {sig} -> {item}')
-        sig_list.append(sig)
-            
-    _sig_list = list(set(sig_list))
-    _sig_list.sort()
-    result['singals'] = _sig_list
-    
-    binds = analyzer.getBinddict()
-    
-    # {TopModule.Instance.Singal: TopModule.Signal}
-    _bind_dict = {}
-    
-    for bind, item in binds.items():
-        # Verify the signal is correct
-        if len(item) < 1:
-            dprint(f'Invalid bind item found: {bind} -> {item}')
-            continue
-        
-        dprint(f'check bind: {bind} -> {item}')
-        # Collect bind of input signals
-        if len(bind.scopechain) == 3:
-            
-            if type(item[0].tree) is not pyverilog.dataflow.dataflow.DFTerminal:
-                dprint(f'Unsupported input type entered: {type(item[0].tree)}, {item[0].tree}')
-                continue
-            
-            value = {bind.scopechain[2].scopename: item[0].tree.name.scopechain[1].scopename}
-            
-            if bind.scopechain[1].scopename in _bind_dict:
-                _bind_dict[bind.scopechain[1].scopename].append(value)
-            else:
-                _bind_dict[bind.scopechain[1].scopename] = [value]
-                
-        # Collect bind of output signals
-        elif len(bind.scopechain) == 2:
-            if type(item[0].tree) is not pyverilog.dataflow.dataflow.DFTerminal:
-                dprint(f'Unsupported output type entered: {type(item[0].tree)}')
-                continue
-            
-            if len(item[0].tree.name.scopechain) == 2:
-                dprint(f'Assigning ignored, {bind}: {item[0].tree.name}')
-                continue
-            
-            value = {item[0].tree.name.scopechain[2].scopename: bind.scopechain[1].scopename}
-            
-            if bind.scopechain[1].scopename in _bind_dict:
-                _bind_dict[item[0].tree.name.scopechain[1].scopename].append(value)
-            else:
-                _bind_dict[item[0].tree.name.scopechain[1].scopename] = [value]
-    
-    result['binds'] = _bind_dict
-    
-    if len(_bind_dict) == 0:
-        dprint('Warning: No bind exist, the adjacency matrix has no value')
+    if len(connection) == 0:
+        dprint('Warning: No connection exist, the adjacency matrix has no value')
     
     # Create matrix of cell(instance) -> describe the connection of cells through signals
     mat = np.zeros((n, n))
