@@ -5,9 +5,7 @@ from optparse import OptionParser
 import numpy as np
 import pandas as pd
 
-from utils.libparse import ParseLiberty, WriteLibVerilog
-from utils.v2m import MatrixFromVerilog
-from utils.feature import GetFeatureMatrix
+from utils.vparse import ParseVerilog, ParseLiberty, WriteLibVerilog, DumpAsJSON
 
 if __name__ == '__main__':
     optparser = OptionParser()
@@ -23,6 +21,8 @@ if __name__ == '__main__':
                          default=False, help="No reordering of binding dataflow, Default=False")
     optparser.add_option("-l", "--liberty", dest="liberty",
                          default=[], help="Path of liberty, Default=None")
+    optparser.add_option("-y", "--y-value", dest="value_y",
+                         default=0, help="Value of y, Default=0")
     optparser.add_option("-s", "--save", dest="savefile",
                          default=None, help="Output directory of computed adjacency matrix. It saves in the directory named same as the topmodule when it is blank, Default=None")
     (options, args) = optparser.parse_args()
@@ -57,23 +57,18 @@ if __name__ == '__main__':
         WriteLibVerilog(lib_path, liberty)
         filelist.append(lib_path)
     
-    result = MatrixFromVerilog(filelist,
+    result = ParseVerilog(filelist,
                   options.topmodule,
                   options.noreorder,
                   options.nobind,
                   options.include,
-                  options.define,
-                  liberty.keys())
+                  options.define)
   
     if result is None or len(result) == 0:
-        raise IOError('Empty adjacency matrix, cannot map and save')
+        raise IOError('Parsing error: Invalid result')
     
-    # Save matrix
-    np.savetxt(f'{save_path}\\matrix.csv', result['matrix'], delimiter=',', fmt='%.2f')
+    json_string = DumpAsJSON(result, liberty.keys(), options.value_y)
     
-    # Save cell info
-    df = pd.DataFrame.from_dict(result['cell_class'], orient='index', columns=['class'])
-    df.to_csv(f'{save_path}\\cells.csv', sep=',')
-    
-    feature_matrix = GetFeatureMatrix(result['cell_class'], liberty)
-    np.savetxt(f'{save_path}\\feature.csv', feature_matrix['matrix'], delimiter=',', fmt='%.2f')
+    with open(os.path.join(save_path, f'{options.topmodule}.json'), 'w') as fp:
+        fp.write(json_string)
+        fp.close()
