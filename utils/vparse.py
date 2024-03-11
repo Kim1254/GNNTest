@@ -71,84 +71,94 @@ def ParseVerilog(filelist, topmodule, noreorder, nobind, include, define):
         return None
     
     def find_parent(value):
-        print(value, type(value))
         temp = ScopeChain(value.scopechain[:-1])
         for name, module in instances:
             if temp == name:
                 return name
         return None
     
-    # Check connection (bind1 <= bind2)
-    for bind1, item1 in binds.items(): # Output bind
-        sig1 = get_sigtype(bind1)
-        if sig1 == 0 or sig1 & INPUT != 0: # Check bind is output
-            continue
+    def find_connection(left, right, is_child=0):
+        LEFT, RIGHT = 1, 2
         
-        for it1 in item1:
-            '''
-            item_type = type(it1.tree)
-            if item_type is DFTerminal or item_type is DFPartselect:
-                pass
+        bind_in = left[0]
+        
+        for item1 in left[1]:
+            target1 = item1 if is_child & 1 else item1.tree
+            item_type = type(target1)
+            if item_type is DFTerminal:
+                msb1, lsb1 = item1.msb, item1.lsb
+            elif item_type is DFPartselect:
+                msb1, lsb1 = target1.msb, target1.lsb
             elif item_type is DFConcat:
-                pass
-            else: # Constants
-                dprint(f'Ignored unsupported bind1 type: {type(item1[0].tree)}, code: {item1[0].tocode()}')
-            '''
-            bind_in = None
-            if type(it1.tree) in [DFTerminal, DFPartselect, DFConcat]:
-                print(it1.tocode())
-                bind_in = find_parent(get_scope(it1.tree))
+                find_connection((left[0], target1.children()), right, is_child | LEFT)
+                continue
             else:
-                dprint(f'Ignored unsupported bind1 type: {type(it1.tree)}, code: {it1.tocode()}')
+                dprint(f'Ignore unsupported left bind type: {type(target1)}, code: {item1.tocode()}')
                 continue
             
-            for bind2, item2 in binds.items(): # Input bind
-                if bind1 == bind2:
+            conn_in = get_scope(target1)
+            if get_sigtype(conn_in) & WIRE:
+                dprint(f'Ignore wire output assigning: {conn_in} -> ?\n{item1.tocode()}')
+                continue
+            conn_in = find_parent(conn_in)
+            
+            for item2 in right[1]:
+                target2 = item2 if is_child & 2 else item2.tree
+                item_type = type(target2)
+                if item_type in [DFTerminal, DFPartselect]:
+                    bind_out = get_scope(target2)
+                elif item_type is DFConcat:
+                    find_connection(left, (right[0], target2.children()), is_child | RIGHT)
+                    continue
+                else:
+                    dprint(f'Ignore unsupported right bind type: {type(target2)}, code: {item2.tocode()}')
                     continue
                 
-                sig2 = get_sigtype(bind2)
-                if sig2 == 0 or sig2 & INPUT == 0: # Check bind is input
+                if bind_in != bind_out:
                     continue
                 
-                for it2 in item2:
-                    item_type = type(it2.tree)
-                    
-                    if item_type is DFConcat: # Signal <= {Signal, Signal}
-                        for c in it2.tree.children():
-                            if bind1 != c.var:
-                                continue
-                            
-                            # Check msb & lsb are in range if items have them
-                            if all([x is not None for x in [it1.msb, it1.lsb, c.msb, c.lsb]]):
-                                if all([x not in range(c.lsb, c.msb + 1) for x in [it1.msb, it1.lsb]]):
-                                    dprint(f"not in range: {bind1} <= {it1.tree}, {it1.msb}, {it1.lsb}, {bind2} <= {c.var}, {c.msb}, {c.lsb}")
-                                    continue
-                            
-                            bind_out = find_parent(c.var)
-                            print(f'added {bind_in} -> {bind_out}')
-                            connection.append([bind_in, bind_out])
-                            break
+                if item_type is DFTerminal:
+                    msb2, lsb2 = item2.msb, item2.lsb
+                if item_type is DFPartselect:
+                    msb2, lsb2 = target2.msb, target2.lsb
+                
+                conn_out = right[0]
+                if get_sigtype(conn_out) & WIRE:
+                    dprint(f'Ignore wire input assigning: {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
+                    continue
+                conn_out = find_parent(conn_out)
+                
+                # Check msb and lsb are in range if they have
+                if all([x is not None for x in [msb1, lsb1, msb2, lsb2]]):
+                    if all([x not in range(lsb2.eval(), msb2.eval() + 1) for x in range(lsb1.eval(), msb1.eval() + 1)]):
+                        dprint(f'out of range: {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
                         continue
-                    elif item_type is DFTerminal: # Signal <= Signal
-                        if bind1 != it2.tree.name:
-                            continue
-                    elif item_type is DFPartselect: # Signal <= Array[msb:lsb]
-                        if bind1 != it2.tree.var:
-                            continue
-                    else: # Others (Signal <= Constants, ...)
-                        dprint(f'Ignored unsupported bind2 type: {type(it2.tree)}, code: {it2.tocode()}')
-                        continue
-                    
-                    # Check msb & lsb are in range if items have them
-                    if all([x is not None for x in [it1.msb, it1.lsb, it2.msb, it2.lsb]]):
-                        if all([x not in range(it2.lsb, it2.msb + 1) for x in [it1.msb, it1.lsb]]):
-                            dprint(f"not in range: {bind1} <= {it1.tree}, {it1.msb}, {it1.lsb}, {bind2} <= {it2.tree}, {it2.msb}, {it2.lsb}")
-                            continue
-                    
-                    bind_out = find_parent(bind2)
-                    connection.append([bind_in, bind_out])
+                
+                # Module <- Signal
+                if len(conn_in.scopechain) != len(conn_out.scopechain):
+                    dprint(f'The length of instance does not match: {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
+                    continue
+                
+                connection.append([conn_in, conn_out])
+                dprint(f'added {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
     
-    dprint(f'''Result:
+    # Check connection (bind1 <= bind2)
+    for bind1, item1 in binds.items(): # Output bind
+        sig = get_sigtype(bind1)
+        if sig == 0 or sig & INPUT: # Check bind is output
+            continue
+        
+        for bind2, item2 in binds.items(): # Input bind
+            if bind1 == bind2:
+                continue
+            
+            sig = get_sigtype(bind2)
+            if sig == 0 or not sig & INPUT: # Check bind is input
+                continue
+            
+            find_connection((bind1, item1), (bind2, item2))
+    
+    print(f'''Result:
 Num of instances: {len(instances)}
 Num of signals: {len(sigs)}
 Num of binds: {len(binds)}
@@ -255,7 +265,7 @@ def DumpAsJSON(vdict, lib_keys, value_y):
         for idx, (name, module) in enumerate(instances):
             if name == key:
                 return idx, module
-        return -1
+        return -1, None
     
     for c in connections:
         in_idx, in_feature = get_instance(c[0])
