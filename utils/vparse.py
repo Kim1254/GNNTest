@@ -90,7 +90,9 @@ def ParseVerilog(filelist, topmodule, noreorder, nobind, include, define):
             elif item_type is DFPartselect:
                 msb1, lsb1 = target1.msb, target1.lsb
             elif item_type is DFConcat:
+                print(f'Try left concat: {left}')
                 find_connection((left[0], target1.children()), right, is_child | LEFT)
+                print(f'end: {left}')
                 continue
             else:
                 dprint(f'Ignore unsupported left bind type: {type(target1)}, code: {item1.tocode()}')
@@ -108,7 +110,9 @@ def ParseVerilog(filelist, topmodule, noreorder, nobind, include, define):
                 if item_type in [DFTerminal, DFPartselect]:
                     bind_out = get_scope(target2)
                 elif item_type is DFConcat:
-                    find_connection(left, (right[0], target2.children()), is_child | RIGHT)
+                    print(f'Try right concat: {right}')
+                    find_connection((left[0], (item1)), (right[0], target2.children()), is_child | RIGHT)
+                    print(f'end: {right}')
                     continue
                 else:
                     dprint(f'Ignore unsupported right bind type: {type(target2)}, code: {item2.tocode()}')
