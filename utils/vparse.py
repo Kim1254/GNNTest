@@ -89,11 +89,11 @@ def ParseVerilog(filelist, topmodule, noreorder, nobind, include, define):
                 msb1, lsb1 = item1.msb, item1.lsb
             elif item_type is DFPartselect:
                 msb1, lsb1 = target1.msb, target1.lsb
-            elif item_type is DFConcat:
-                print(f'Try left concat: {left}')
-                find_connection((left[0], target1.children()), right, is_child | LEFT)
-                print(f'end: {left}')
-                continue
+#            elif item_type is DFConcat:
+#                print(f'Try left concat: {left}')
+#                find_connection((left[0], target1.children()), right, is_child | LEFT)
+#                print(f'end: {left}')
+#                continue
             else:
                 dprint(f'Ignore unsupported left bind type: {type(target1)}, code: {item1.tocode()}')
                 continue
@@ -110,9 +110,35 @@ def ParseVerilog(filelist, topmodule, noreorder, nobind, include, define):
                 if item_type in [DFTerminal, DFPartselect]:
                     bind_out = get_scope(target2)
                 elif item_type is DFConcat:
-                    print(f'Try right concat: {right}')
-                    find_connection((left[0], (item1)), (right[0], target2.children()), is_child | RIGHT)
-                    print(f'end: {right}')
+#                    print(f'Try right concat: {right}')
+#                    find_connection((left[0], (item1)), (right[0], target2.children()), is_child | RIGHT)
+#                    print(f'end: {right}')
+                    for child in item2.children():
+                        bind_out = get_scope(child)
+                        if bind_in != bind_out:
+                            continue
+                        
+                        msb2, lsb2 = child.msb, child.lsb
+                        
+                        conn_out = right[0]
+                        if get_sigtype(conn_out) & WIRE:
+                            dprint(f'Ignore wire input assigning: {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
+                            continue
+                        conn_out = find_parent(conn_out)
+                        
+                        # Check msb and lsb are in range if they have
+                        if all([x is not None for x in [msb1, lsb1, msb2, lsb2]]):
+                            if all([x not in range(lsb2.eval(), msb2.eval() + 1) for x in range(lsb1.eval(), msb1.eval() + 1)]):
+                                dprint(f'out of range: {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
+                                continue
+                        
+                        # Module <- Signal
+                        if len(conn_in.scopechain) != len(conn_out.scopechain):
+                            dprint(f'The length of instance does not match: {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
+                            continue
+                        
+                        connection.append([conn_in, conn_out])
+                        dprint(f'added {conn_in} -> {conn_out}, {left[0]}. {right[0]}\n{item1.tocode()}{item2.tocode()}')
                     continue
                 else:
                     dprint(f'Ignore unsupported right bind type: {type(target2)}, code: {item2.tocode()}')
